@@ -3,7 +3,7 @@
 ## Description
 Here we calculate the effectiveness of mask mandates in Utah. 
 
-Using the methods outlined in Britton et al., we calculate the Face Mask Effect ($$E_{Fm}$$), comparing the effective reproduction number ($$R_e$$) pre-and post-intervention. 
+Using the methods outlined in Britton et al., we calculate the Face Mask Effect ($E_{Fm}$), comparing the effective reproduction number ($R_e$) pre-and post-intervention. 
 
 
 ## Contact
