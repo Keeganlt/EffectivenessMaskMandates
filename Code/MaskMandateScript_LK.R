@@ -3,6 +3,7 @@
 ## Transmission: A Case Study of Utah
 #
 # Alicia Horn, Holly Shoemaker, Lindsay Keegan
+# Updated Aug 5, 2024
 ###################################################### 
 
 
@@ -17,8 +18,64 @@ library(segmented)
 library(cowplot)
 theme_set(theme_cowplot(font_size=18))
 library(scales)
-library(rgdal)
+#library(rgdal)
 library(sf)
+library(ggplot2)
+library(ggnewscale)
+
+
+# Variants ----------------------------------------------------------------
+
+## Load in data ------------------------------------------------------------
+
+udoh.variants <- read.csv(file = "Testing_Sequencing Results by Week_2024-07-24.csv")
+
+udoh.variants <- udoh.variants %>%
+  mutate(Week.Sample.was.Collected = lubridate::mdy(Week.Sample.was.Collected))
+
+udoh.variants.filtered <- udoh.variants %>%
+  filter(Week.Sample.was.Collected >= as.Date("2020-10-25")) %>%
+  filter(Week.Sample.was.Collected <= as.Date("2021-05-08"))
+
+# Calculate the total number of cases per week
+udoh.variants.filtered.total <- udoh.variants.filtered %>%
+  group_by(Week.Sample.was.Collected) %>%
+  summarize(Total_Identified = sum(Number.Identified.in.Utah, na.rm = TRUE), .groups = 'drop')
+
+# Merge the totals back into the original dataframe
+udoh.variants.filtered <- udoh.variants.filtered %>%
+  left_join(udoh.variants.filtered.total, by = "Week.Sample.was.Collected")
+
+# Calculate the percentage for each lineage within each week
+udoh.variants.filtered <- udoh.variants.filtered %>%
+  mutate(Percentage = (Number.Identified.in.Utah / Total_Identified) * 100)
+
+percents<-udoh.variants.filtered %>%
+  group_by(Week.Sample.was.Collected) %>%
+  summarize(Total_percent = sum(Percentage, na.rm = TRUE), .groups = 'drop')
+
+udoh.variants.filtered <- udoh.variants.filtered %>%
+  mutate(Lineage = factor(Lineage, levels = unique(Lineage)))
+
+
+ggplot(udoh.variants.filtered, aes(x = Week.Sample.was.Collected, y = Percentage, fill = Lineage)) + 
+  geom_bar(position="stack", stat="identity", width = 7) +
+  xlab("Week Sample Collected") + 
+  ylab("% Identified ") + 
+  theme_bw() + 
+  scale_fill_discrete(
+    labels = c("B.1.1.7" = "Alpha", "B.1.351" = "Beta", "B.1.427" = "Epsilon1",
+               "B.1.429" = "Epsilon2", "B.1.617.2" = "Delta",
+               "Other Lineage" = "Other\nLineage", "P.1" = "Gamma", "B.1.1.529" = "Omicron")) +
+  theme(legend.position = "bottom")+
+  geom_vline(xintercept = as.Date("2020-06-28", "%Y-%m-%d")) + 
+  annotate("text", x= (as.Date("2020-07-10", "%Y-%m-%d")+1), y = 40, label = "SLSC Mandate", angle=270, hjust = 0, size = 3.5) +
+  geom_vline(xintercept = as.Date("2020-11-09", "%Y-%m-%d")) +
+  annotate("text", x= (as.Date("2020-11-20", "%Y-%m-%d")+1), y = 49, label = "Statewide Mandate", angle=270, hjust = 0, size = 3.5) +
+  geom_vline(xintercept = as.Date("2021-04-10", "%Y-%m-%d")) +
+  annotate("text", x= (as.Date("2021-04-20", "%Y-%m-%d")+1), y = 62, label = "Statewide Mandate Lifted", angle=270, hjust = 0, size = 3.5) + 
+  xlim(as_date("2020-06-01"), as_date("2021-05-09"))
+
 
 
 # Incidence Plots  --------------------------------------------------------
@@ -48,16 +105,16 @@ udohhplot <- ggplot(udohh.incid) +
   annotate("text", x= (as.Date("2020-11-20", "%Y-%m-%d")+1), y = 1750, label = "Statewide Mandate", angle=270, hjust = 0, size = 5) +
   geom_vline(xintercept = as.Date("2021-04-10", "%Y-%m-%d")) +
   annotate("text", x= (as.Date("2021-04-20", "%Y-%m-%d")+1), y = 1750, label = "Statewide Mandate Lifted", angle=270, hjust = 0, size = 5) + 
-  labs(y = "Incidet Cases", x= "Date")  +
+  labs(y = "Incident Cases", x= "Date")  +
   scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + 
   theme(axis.text.x=element_text(angle=60, hjust=1), 
-        aspect.ratio = 0.7) + 
+        legend.position = "bottom") + 
   guides(color=guide_legend(title="Local Health\nDistrict")) 
 
  g2 <- udohhplot + theme(legend.position = "none")
 
 
-legend_2 <- get_legend(udohhplot)
+legend_2 <- cowplot::get_plot_component(udohhplot, "guide-box", return_all = TRUE)[[3]]
 
 
 mandatedcount <- udohh.incid %>%
@@ -73,20 +130,57 @@ mandatedcountplot <- ggplot(mandatedcount) +
   geom_vline(xintercept = as.Date("2021-04-10", "%Y-%m-%d")) +
   annotate("text", x= (as.Date("2021-04-20", "%Y-%m-%d")+1), y = 1750, label = "Statewide Mandate Lifted", angle=270, hjust = 0, size = 5) + 
   scale_color_manual(values = c("#7CAE00", "#00B4F0")) +
-  labs(y = "Incidet Cases", x= "Date")  +
+  labs(y = "Incident Cases", x= "Date")  +
   scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") + 
   theme(axis.text.x=element_text(angle=60, hjust=1)) +  
-  theme(legend.position = "none", 
-        aspect.ratio = 0.7)
+  theme(legend.position = "none")
 
 g1 <- mandatedcountplot
 
+#mortality rate
+#load in data
+# deaths <- read.csv("C:/Users/Alici/OneDrive/Documents/Utah_COVID19_data (1)/Overview_Seven-Day Rolling Average Mortality by Date of Death_2021-09-03.csv")
+deaths <- read.csv("~/Downloads/Utah_COVID19_data/Overview_Seven-Day Rolling Average Mortality by Date of Death_2024-07-24.csv")
+summary(deaths)
+#converting date
+deaths$Date <- lubridate::ymd(deaths$Date)
+View(deaths)
+
+deaths %>% 
+  filter(Date <= as.Date("2021-06-28", "%Y-%m-%d")
+         & Date >= as.Date("2020-04-28", "%Y-%m-%d")) -> smalldeaths
+#udohh <- group_by(as.Date())
+deathsplot <- ggplot(smalldeaths) +
+  geom_line(aes(x = Date, y = Mortality.Count), color = "navy")+
+  geom_vline(xintercept = as.Date("2020-06-28", "%Y-%m-%d"), size = 0.9) + 
+  annotate("text", x= as.Date("2020-07-09", "%Y-%m-%d"), y = 25, label = "SLSC Mandate", angle=270) +
+  geom_vline(xintercept = as.Date("2020-11-09", "%Y-%m-%d"), size = 0.9) +
+  annotate("text", x= as.Date("2020-11-20", "%Y-%m-%d"), y = 1, label = "Statewide Mandate", angle=270) +
+  geom_vline(xintercept = as.Date("2021-04-10", "%Y-%m-%d"), size = 0.9) +
+  annotate("text", x= as.Date("2021-04-20", "%Y-%m-%d"), y = 20, label = "Statewide Mandate Lifted", angle=270) +
+  xlab("Date") +
+  ylab("Daily Mortality Count")
+
+deathsplot
+
+
+space<- ggplot() + theme_void() + 
+  theme(panel.background = element_rect(fill = "transparent", color = NA))
+
+
+Fig.1a <- plot_grid(g1, g2,labels = c("A","B"), nrow = 1)
+Fig.1b <- plot_grid(space, legend_2, nrow = 1, rel_widths = c(0.01,1))
+
+
+Fig.1ab <- plot_grid(Fig.1a, Fig.1b, nrow = 2, rel_heights = c(1,0.2))
+
+
 ## FIGURE 1: Data 
-Fig.1 <- plot_grid(g1, g2,legend_2, labels = c("A","B",""), nrow = 1, rel_widths = c(1,1,0.3))
+Fig.1 <- plot_grid(g1, g2, legend_2, labels = c("A","B",""), nrow = 1, rel_widths = c(1,1,0.3))
 
 Fig.1
 
-
+Fig1.all <- plot_grid(Fig.1, deathsplot, labels = c("", "C"), nrow = 2)
 
 # Efm Calculations --------------------------------------------------------
 
@@ -120,7 +214,7 @@ SLCPreMaskMandate <- "2020-06-27"
 SLCPostMaskMandate <- "2020-06-29"
 #generation time
 mean.gt <- 6.5 # mean
-stdev.gt <- 4 # stdev
+stdev.gt <- 0.82 # stdev
 
 # Filter data by county
 #Making datasets for each group
@@ -392,6 +486,16 @@ EFmAll
 county <- read.csv("LHD-county.csv")
   #read.csv("C:/Users/Alici/OneDrive/Downloads/LHD-county.csv")
 
+#roads <- rgdal::readOGR("/Utah_Roads/Roads.shp")
+
+
+# Load shapefile of Utah roads (replace "path/to/utah_roads.shp" with actual file path)
+utah_roads <- st_read("Utah_Roads/Roads.shp")
+
+# Filter for Interstate 15
+i15 <- utah_roads[utah_roads$CARTOCODE == 1, ]
+
+
 merge(EFmAll, county, by.x = "LHD", by.y = "LHD", all.x = TRUE
       , all.y = FALSE
 ) -> EFmAll_county
@@ -404,10 +508,12 @@ Utah_final <- inner_join(EFmAll_county, Utah, by=c('County' = 'subregion'))
 
 Utah_final$EFm <- as.numeric(Utah_final$EFm)
 
-utah_base <- ggplot(data = Utah_final, mapping = aes(x = long, y = lat, group = County)) + 
+utah_base <- ggplot() + 
   coord_fixed(1.3) + 
-  geom_polygon(color = "black", fill = "gray")
+  geom_polygon(data = Utah_final, mapping = aes(x = long, y = lat, group = County), 
+               color = "black", fill = "gray") 
 utah_base
+
 
 
 ditch_the_axes <- theme(
@@ -419,17 +525,23 @@ ditch_the_axes <- theme(
   axis.title = element_blank()
 )
 
-utah_base + 
-  geom_polygon(aes(fill = EFm), color = "white") +
-  geom_polygon(color = "black", fill = NA) +
-  theme_bw() +
-  ditch_the_axes +
-  scale_fill_gradient2(low = "#67a9cf",
-                       mid = "#f7f7f7",
-                       high = "#ef8a62",
-                       midpoint = 0.0,
-                       limits = c(-50,50)
-  )
+# utah_base + 
+#   geom_polygon(data = Utah_final, 
+#                mapping = aes(x = long, y = lat, group = County, fill = EFm), 
+#                color = "white") +
+#   geom_polygon(data = Utah_final, mapping = aes(x = long, y = lat, group = County),
+#                color = "black", fill = NA) +
+#   theme_bw() +
+#   ditch_the_axes +
+#   scale_fill_gradient2(low = "#67a9cf",
+#                        mid = "#f7f7f7",
+#                        high = "#ef8a62",
+#                        midpoint = 0.0,
+#                        limits = c(-50,50)) +
+#   geom_sf(data = i15, aes(color = CARTOCODE), size = 2, show.legend = "line") + 
+#   scale_color_manual(values = "maroon", 
+#                      labels = c("Interstate Highways"),
+#                      name = "Roads") 
 
 
 #MAKING MAP WITH JURISDICTION LINES
@@ -473,12 +585,36 @@ utah_counties <- map("county", "utah", plot = FALSE, fill = TRUE)
 utah_counties <- st_as_sf(utah_counties)
 
 
+# Highlight Salt Lake County
+slco_counties <- map("county", "utah,salt lake", plot = FALSE, fill = TRUE)
+
+# Convert the county boundaries to an sf object
+slco_counties <- st_as_sf(slco_counties)
+
+
+
+# Get the map data for Salt Lake County
+salt_lake_map <- map("county", "utah,salt lake", plot = FALSE, fill = TRUE)
+
+# Convert to an sf object
+salt_lake_sf <- st_as_sf(map2SpatialPolygons(salt_lake_map, IDs = salt_lake_map$names, 
+                                             proj4string = CRS("+proj=longlat +datum=WGS84")))
+
+# Get the map data for Salt Lake County
+summit_map <- map("county", "utah,summit", plot = FALSE, fill = TRUE)
+
+# Convert to an sf object
+summit_sf <- st_as_sf(map2SpatialPolygons(summit_map, IDs = salt_lake_map$names, 
+                                             proj4string = CRS("+proj=longlat +datum=WGS84")))
+
 
 # Create a basic plot of Utah counties
-plot.slcMd <- ggplot() + geom_sf(data = new.mask.data, aes(fill = EFm), color = "black")
+plot.slcMd <- utah_base + geom_sf(data = new.mask.data, aes(fill = EFm), color = "black")
 
 plot.slcMd <- plot.slcMd +
-  geom_sf(data = utah_counties, fill = "transparent", color = "#EEEEE4", linewidth = 0.1) +
+  geom_sf(data = utah_counties, fill = "transparent", color = "black", linewidth = 0.1) +
+  geom_sf(data = salt_lake_sf, fill = NA, color = "#F4C40FFF", linewidth=4) +  # fill = NA removes fill, color = "black" sets outline color
+  geom_sf(data = summit_sf, fill = NA, color = "#F4C40FFF", linewidth=4) +  # fill = NA removes fill, color = "black" sets outline color
   geom_sf(data = new.mask.data, fill = "transparent", color = "black", linewidth = 1.25) +
   theme_minimal() 
 
@@ -487,7 +623,7 @@ plot.slcMd
 
 #plot_grid(plot.slcMd, plot.slcMd, plot.slcMd, labels = "AUTO")
 
-colour_breaks <- c(-50, 0, 50, 105)
+colour_breaks <- c(-50, 0, 50, 110)
 colours <- c("#67a9cf",
                       "#f7f7f7",
                       "#ef8a62",
@@ -496,7 +632,7 @@ colours <- c("#67a9cf",
 SLSC.plot <- plot.slcMd + 
   #geom_polygon(data = new.mask.data, aes(x = long, y = lat, group = group), colour = "black", fill = NA) + 
   #geom_polygon(aes(fill = EFm), color = "white") +
-  geom_polygon(color = "grey", fill = NA) +
+  geom_polygon() +
   theme_bw() +
   ditch_the_axes +
   # scale_fill_gradient2(low = "#67a9cf",
@@ -505,10 +641,14 @@ SLSC.plot <- plot.slcMd +
   #                      midpoint = 0.0,
   #                      limits = c(-50,50)) +
   scale_fill_gradientn(
-    limits  = c(-50, 105),
+    limits  = c(-50, 110),
     colours = colours[c(1, seq_along(colours), length(colours))],
-    values  = c(0, scales::rescale(colour_breaks, from = c(-50, 105)), 1),
-    name = expression("E"["Fm"]))
+    values  = c(0, scales::rescale(colour_breaks, from = c(-50, 110)), 1),
+    name = expression("E"["Fm"]))+
+  geom_sf(data = i15, aes(color = CARTOCODE), size = 2, show.legend = "line") +
+  scale_color_manual(values = "maroon",
+                     labels = c("Interstate\nHighways"),
+                     name = "Roads")
 
 
 p.legend2 <- get_legend(SLSC.plot +theme(legend.title=element_text(size=20), 
@@ -813,12 +953,23 @@ mdt.new.mask.data <-merge(health_districts, mdt.old.mask.data, by.x = c("DISTNAM
 # utah_counties <- st_as_sf(utah_counties)
 
 
+# Get the map data for Salt Lake County
+state_map <- map("state", "utah", plot = FALSE, fill = TRUE)
+
+# Convert to an sf object
+state_sf <- st_as_sf(map2SpatialPolygons(state_map, IDs = salt_lake_map$names, 
+                                          proj4string = CRS("+proj=longlat +datum=WGS84")))
+
+
+
+
 
 # Create a basic plot of Utah counties
-plot.mdt <- ggplot() + geom_sf(data = mdt.new.mask.data, aes(fill = EFm), color = "black")
+plot.mdt <- utah_base + geom_sf(data = mdt.new.mask.data, aes(fill = EFm), color = "black")
 
 plot.mdt <- plot.mdt +
-  geom_sf(data = utah_counties, fill = "transparent", color = "#EEEEE4", linewidth = 0.1) +
+  geom_sf(data = utah_counties, fill = "transparent", color = "black", linewidth = 0.1) +
+  geom_sf(data = state_sf, fill = NA, color = "#F4C40FFF", linewidth=4) +  # fill = NA removes fill, color = "black" sets outline color
   geom_sf(data = new.mask.data, fill = "transparent", color = "black", linewidth = 1.25) +
   theme_minimal() 
 
@@ -840,7 +991,11 @@ plot.mdt <- plot.mdt +
     limits  = c(-50, 105),
     colours = colours[c(1, seq_along(colours), length(colours))],
     values  = c(0, scales::rescale(colour_breaks, from = c(-50, 105)), 1),
-    name = expression("E"["Fm"]))
+    name = expression("E"["Fm"]))+
+  geom_sf(data = i15, aes(color = CARTOCODE), size = 2, show.legend = "line") +
+  scale_color_manual(values = "maroon",
+                     labels = c("Interstate Highways"),
+                     name = "Roads")
 
 
 ## Figure 2b
@@ -1147,13 +1302,33 @@ post.mdt.new.mask.data <-merge(health_districts, post.mdt.old.mask.data, by.x = 
 # utah_counties <- st_as_sf(utah_counties)
 
 
+# Get the map data for Salt Lake County
+grand_map <- map("county", "utah,grand", plot = FALSE, fill = TRUE)
+
+# Convert to an sf object
+grand_sf <- st_as_sf(map2SpatialPolygons(grand_map, IDs = salt_lake_map$names, 
+                                         proj4string = CRS("+proj=longlat +datum=WGS84")))
+
+
+# Coordinates for Salt Lake City
+salt_lake_city <- data.frame(
+  city = "Salt Lake City",
+  lat = 40.7608,
+  long = -111.8910
+)
+
+# Convert the coordinates to an sf object
+salt_lake_city_sf <- st_as_sf(salt_lake_city, coords = c("long", "lat"), crs = 4326)
+
 
 # Create a basic plot of Utah counties
-plot.post.mdt <- ggplot() + geom_sf(data = post.mdt.new.mask.data, aes(fill = EFm), color = "black")
+plot.post.mdt <- utah_base + geom_sf(data = post.mdt.new.mask.data, aes(fill = EFm), color = "black")
 
 plot.post.mdt <- plot.post.mdt +
-  geom_sf(data = utah_counties, fill = "transparent", color = "#EEEEE4", linewidth = 0.1) +
+  geom_sf(data = grand_sf, fill = NA, color = "#F4C40FFF", linewidth=4) +  # fill = NA removes fill, color = "black" sets outline color
+  geom_sf(data = utah_counties, fill = "transparent", color = "black", linewidth = 0.1) +
   geom_sf(data = new.mask.data, fill = "transparent", color = "black", linewidth = 1.25) +
+  geom_sf(data = salt_lake_city_sf, color = "#F4C40FFF", size = 10) +  # Point for Salt Lake City
   theme_minimal() 
 
 plot.post.mdt
@@ -1181,7 +1356,11 @@ plot.post.mdt <- plot.post.mdt +
     limits  = c(-50, 105),
     colours = colours[c(1, seq_along(colours), length(colours))],
     values  = c(0, scales::rescale(colour_breaks, from = c(-50, 105)), 1),
-    name = expression("E"["Fm"]))
+    name = expression("E"["Fm"]))+
+  geom_sf(data = i15, aes(color = CARTOCODE), size = 2, show.legend = "line") +
+  scale_color_manual(values = "maroon",
+                     labels = c("Interstate\nHighways"),
+                     name = "Roads")
 
 
 ## Figure 2c
@@ -1298,4 +1477,67 @@ empty.map <- ggplot() +
   ditch_the_axes 
   
 empty.map
+
+
+### Vaccination Data -----
+vaccines <- read.csv("~/Downloads/Utah_COVID19_data/Vaccine_Cumulative vaccine administrations deliveries_2024-07-24.csv")
+summary(vaccines)
+#converting date
+vaccines$vaccine_date <- lubridate::mdy(vaccines$vaccine_date)
+View(vaccines)
+
+vaccines %>% 
+  filter(vaccine_date <= as.Date("2021-06-28")) %>% 
+  filter(vaccine_date >= as.Date("2020-12-10")) -> smallvaccine 
+#udohh <- group_by(as.Date())
+vaccineplot <- ggplot(smallvaccine) +
+  geom_line(aes(x = vaccine_date, y = Cumulative.People.Received.at.Least.One.Dose)) +
+  xlab("Date of Vaccine Dose") +
+  ylab("Cumulative number of people recieving at least one dose")
+vaccineplot
+
+
+
+# Supplemental changing Gt analysis -----------------
+# Calculate the total number of cases per week
+udoh.variants.filtered.total <- udoh.variants.filtered %>%
+  group_by(Week.Sample.was.Collected) %>%
+  summarize(Total_Identified = sum(Number.Identified.in.Utah, na.rm = TRUE), .groups = 'drop')
+
+# Merge the totals back into the original dataframe
+udoh.variants.filtered <- udoh.variants.filtered %>%
+  left_join(udoh.variants.filtered.total, by = "Week.Sample.was.Collected")
+
+# Calculate the percentage for each lineage within each week
+udoh.variants.filtered <- udoh.variants.filtered %>%
+  mutate(Percentage = (Number.Identified.in.Utah / Total_Identified) * 100)
+
+
+
+percents<-udoh.variants.filtered %>%
+  group_by(Week.Sample.was.Collected) %>%
+  summarize(Total_percent = sum(Percentage, na.rm = TRUE), .groups = 'drop')
+
+udoh.variants.filtered <- udoh.variants.filtered %>%
+  mutate(Lineage = factor(Lineage, levels = unique(Lineage)))
+
+
+ggplot(udoh.variants.filtered, aes(x = Week.Sample.was.Collected, y = Percentage, fill = Lineage)) + 
+  geom_bar(position="stack", stat="identity", width = 7) +
+  xlab("Week Sample Collected") + 
+  ylab("% Identified ") + 
+  theme_bw() + 
+  scale_fill_discrete(
+    labels = c("B.1.1.7" = "Alpha", "B.1.351" = "Beta", "B.1.427" = "Epsilon1",
+               "B.1.429" = "Epsilon2", "B.1.617.2" = "Delta",
+               "Other Lineage" = "Other\nLineage", "P.1" = "Gamma", "B.1.1.529" = "Omicron")) +
+  theme(legend.position = "bottom")+
+  geom_vline(xintercept = as.Date("2020-06-28", "%Y-%m-%d")) + 
+  annotate("text", x= (as.Date("2020-07-10", "%Y-%m-%d")+1), y = 40, label = "SLSC Mandate", angle=270, hjust = 0, size = 3.5) +
+  geom_vline(xintercept = as.Date("2020-11-09", "%Y-%m-%d")) +
+  annotate("text", x= (as.Date("2020-11-20", "%Y-%m-%d")+1), y = 49, label = "Statewide Mandate", angle=270, hjust = 0, size = 3.5) +
+  geom_vline(xintercept = as.Date("2021-04-10", "%Y-%m-%d")) +
+  annotate("text", x= (as.Date("2021-04-20", "%Y-%m-%d")+1), y = 62, label = "Statewide Mandate Lifted", angle=270, hjust = 0, size = 3.5) + 
+  xlim(as_date("2020-06-01"), as_date("2021-05-09"))
+
 
