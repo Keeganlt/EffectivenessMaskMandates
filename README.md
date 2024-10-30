@@ -2,7 +2,7 @@
 
 by Alicia Horn, Holly Shoemaker and Lindsay Keegan
 
-This paper is in press at [Public Health Reports](https://journals.sagepub.com/home/phr).
+This paper is published in [Public Health Reports](https://journals.sagepub.com/doi/10.1177/00333549241290676).
 
 ## Description
 The objective of this study was to describe how face mask mandates at the state, county, and local levels differed in their effectiveness in reducing the number of COVID-19 cases in the jurisdiction where the mandate was implemented and throughout Utah. Using the method outlined in Britton et al.[2021](https://royalsocietypublishing.org/doi/full/10.1098/rspa.2021.0151) we calculated the effectiveness of face mask mandates ($$E_{Fm}$$) on reducing COVID-19 transmission. We calculated the $$E_{Fm}$$ for all local health districts (LHDs) in Utah after 3 dates: June 27-28, 2020 (Salt Lake/Summit County [SLSC] face mask mandates issued), November 9, 2020 (statewide face mask mandate issued), and April 10, 2021 (all mandates lifted except in Salt Lake City). Overall, we found that most counties in Utah had a reduction in transmission of COVID-19 after face mask mandates were implemented (Figure 1). On average, we found an 11.9% reduction reductions in $$E_{Fm}$$, with 8 of 13 local health districts experiencing a reduction after the introduction of the SLSC face mask mandates and on average a 12.7% reduction, with 12 of 13 local health districts experiencing a reduction in $$E_{Fm}$$ after the statewide mandate. After mandates were lifted, many counties had an increase in $$E_{Fm}$$.
